@@ -71,6 +71,11 @@ async def live_tts(websocket: WebSocket):
         )
         print("✓ Connected to Deepgram TTS API")
 
+        # Notify client that connection is ready
+        print("DEBUG: Sending Open event to client")
+        await websocket.send_text(json.dumps({'type': 'Open'}))
+        print("DEBUG: Open event sent")
+
         # Task to forward messages from Deepgram to client
         async def forward_from_deepgram():
             try:
@@ -90,11 +95,14 @@ async def live_tts(websocket: WebSocket):
                 pass
             except Exception as e:
                 print(f"Error forwarding from Deepgram: {e}")
-                await websocket.send_text(json.dumps({
-                    "type": "Error",
-                    "description": str(e),
-                    "code": "PROVIDER_ERROR"
-                }))
+                try:
+                    await websocket.send_text(json.dumps({
+                        "type": "Error",
+                        "description": str(e),
+                        "code": "PROVIDER_ERROR"
+                    }))
+                except:
+                    pass  # WebSocket already closed
 
         # Start forwarding task
         forward_task = asyncio.create_task(forward_from_deepgram())
@@ -116,11 +124,14 @@ async def live_tts(websocket: WebSocket):
 
     except Exception as e:
         print(f"WebSocket error: {e}")
-        await websocket.send_text(json.dumps({
-            "type": "Error",
-            "description": str(e),
-            "code": "CONNECTION_FAILED"
-        }))
+        try:
+            await websocket.send_text(json.dumps({
+                "type": "Error",
+                "description": str(e),
+                "code": "CONNECTION_FAILED"
+            }))
+        except:
+            pass  # WebSocket already closed
 
     finally:
         # Cleanup
