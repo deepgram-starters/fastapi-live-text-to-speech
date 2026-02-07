@@ -3,10 +3,11 @@ title = "FastAPI Live Text-to-Speech"
 description = "Get started using Deepgram's Live TTS with this FastAPI demo app"
 author = "Deepgram DX Team <devrel@deepgram.com> (https://developers.deepgram.com)"
 repository = "https://github.com/deepgram-starters/fastapi-live-text-to-speech"
-useCase = "Live TTS"
-language = "Python"
-framework = "FastAPI"
+useCase = "live-text-to-speech"
+language = "python"
+framework = "fastapi"
 sdk = "N/A"
+tags = ["live-text-to-speech", "live-tts", "streaming-tts", "real-time-tts", "streaming-text-to-speech", "python", "fastapi"]
 
 [install.pre]
 command = ["git submodule update --init --recursive", "python3 -m venv venv"]
