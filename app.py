@@ -18,7 +18,6 @@ load_dotenv(override=False)
 CONFIG = {
     "port": int(os.environ.get("PORT", 8081)),
     "host": os.environ.get("HOST", "0.0.0.0"),
-    "frontend_port": int(os.environ.get("FRONTEND_PORT", 8080)),
 }
 
 def load_api_key():
@@ -33,20 +32,16 @@ DEEPGRAM_TTS_URL = "wss://api.deepgram.com/v1/speak"
 app = FastAPI(title="Deepgram Live TTS API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        f"http://localhost:{CONFIG['frontend_port']}",
-        f"http://127.0.0.1:{CONFIG['frontend_port']}",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.websocket("/tts/stream")
+@app.websocket("/api/live-text-to-speech")
 async def live_tts(websocket: WebSocket):
     """Raw WebSocket proxy endpoint for live TTS"""
     await websocket.accept()
-    print("Client connected to /tts/stream")
+    print("Client connected to /api/live-text-to-speech")
 
     deepgram_ws = None
     forward_task = None
