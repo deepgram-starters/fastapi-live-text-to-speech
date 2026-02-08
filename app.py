@@ -66,11 +66,6 @@ async def live_tts(websocket: WebSocket):
         )
         print("✓ Connected to Deepgram TTS API")
 
-        # Notify client that connection is ready
-        print("DEBUG: Sending Open event to client")
-        await websocket.send_text(json.dumps({'type': 'Open'}))
-        print("DEBUG: Open event sent")
-
         # Task to forward messages from Deepgram to client
         async def forward_from_deepgram():
             try:
