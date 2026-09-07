@@ -157,7 +157,7 @@ async def get_session():
 
 @app.websocket("/api/live-text-to-speech")
 async def live_tts(websocket: WebSocket):
-    """Raw WebSocket proxy endpoint for live TTS"""
+    """WebSocket bridge endpoint for live TTS."""
     # Validate JWT from subprotocol
     protocols = websocket.headers.get("sec-websocket-protocol", "")
     protocol_list = [p.strip() for p in protocols.split(",")]
