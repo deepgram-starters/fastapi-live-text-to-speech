@@ -259,6 +259,8 @@ async def live_tts(websocket: WebSocket):
                         await connection.send_clear()
                     elif msg_type == "Close":
                         await connection.send_close()
+                        await websocket.close()
+                        break
                     else:
                         print(f"Ignoring unknown client message type: {msg_type}")
 

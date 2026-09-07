@@ -3,10 +3,13 @@ import json
 import os
 import unittest
 from contextlib import asynccontextmanager
+from urllib.parse import parse_qs, urlparse
 
 os.environ.setdefault("DEEPGRAM_API_KEY", "test-key")
 
 import app
+import deepgram.speak.v1.client as speak_v1_client
+from deepgram import AsyncDeepgramClient
 from deepgram.core.api_error import ApiError
 from deepgram.speak.v1.types import SpeakV1Metadata
 from fastapi.testclient import TestClient
@@ -31,7 +34,6 @@ class FakeConnection:
 
     async def send_close(self):
         self.calls.append(("Close",))
-        await self.responses.put(b"Close")
 
     async def __aiter__(self):
         while True:
@@ -72,7 +74,6 @@ class LiveTtsTests(unittest.TestCase):
                 ('{"type":"Speak","text":"hello"}', b"Speak"),
                 ('{"type":"Flush"}', b"Flush"),
                 ('{"type":"Clear"}', b"Clear"),
-                ('{"type":"Close"}', b"Close"),
             ]:
                 websocket.send_text(payload)
                 self.assertEqual(websocket.receive_bytes(), expected)
@@ -90,8 +91,23 @@ class LiveTtsTests(unittest.TestCase):
         )
         self.assertEqual(
             connection.calls,
-            [("Speak", "hello"), ("Flush",), ("Clear",), ("Close",)],
+            [("Speak", "hello"), ("Flush",), ("Clear",)],
         )
+
+    def test_close_control_closes_browser_websocket(self):
+        connection = FakeConnection()
+
+        @asynccontextmanager
+        async def connect(**kwargs):
+            yield connection
+
+        app.deepgram.speak.v1.connect = connect
+
+        with self.connect() as websocket:
+            websocket.send_text('{"type":"Close"}')
+            self.assertEqual(websocket.receive()["type"], "websocket.close")
+
+        self.assertEqual(connection.calls, [("Close",)])
 
     def test_forwards_sdk_metadata_as_json(self):
         metadata = SpeakV1Metadata(
@@ -140,3 +156,72 @@ class LiveTtsTests(unittest.TestCase):
             },
         )
         self.assertNotIn("browser-triggerable-secret", str(error))
+
+    def test_redacts_stream_api_error_details_from_browser(self):
+        class FailingConnection:
+            async def __aiter__(self):
+                raise ApiError(
+                    status_code=503,
+                    headers={"Authorization": "Token stream-error-secret"},
+                    body="unavailable",
+                )
+                yield
+
+        @asynccontextmanager
+        async def connect(**kwargs):
+            yield FailingConnection()
+
+        app.deepgram.speak.v1.connect = connect
+
+        with self.connect() as websocket:
+            error = json.loads(websocket.receive_text())
+
+        self.assertEqual(
+            error,
+            {
+                "type": "Error",
+                "description": "Deepgram stream error (HTTP 503)",
+                "code": "PROVIDER_ERROR",
+            },
+        )
+        self.assertNotIn("stream-error-secret", str(error))
+
+    def test_sdk_serializes_typed_and_raw_query_parameters(self):
+        captured_url = None
+        original_websocket_connect = speak_v1_client.websockets_client_connect
+
+        @asynccontextmanager
+        async def capture_websocket_connect(url, extra_headers):
+            nonlocal captured_url
+            captured_url = url
+            yield object()
+
+        speak_v1_client.websockets_client_connect = capture_websocket_connect
+        try:
+            async def connect():
+                client = AsyncDeepgramClient(api_key="test-key")
+                async with client.speak.v1.connect(
+                    model="aura-asteria-en",
+                    encoding="linear16",
+                    sample_rate=48000,
+                    request_options={
+                        "additional_query_parameters": {"container": "none"}
+                    },
+                ):
+                    pass
+
+            asyncio.run(connect())
+        finally:
+            speak_v1_client.websockets_client_connect = original_websocket_connect
+
+        parsed_url = urlparse(captured_url)
+        self.assertEqual(parsed_url.path, "/v1/speak")
+        self.assertEqual(
+            parse_qs(parsed_url.query),
+            {
+                "model": ["aura-asteria-en"],
+                "encoding": ["linear16"],
+                "sample_rate": ["48000"],
+                "container": ["none"],
+            },
+        )
