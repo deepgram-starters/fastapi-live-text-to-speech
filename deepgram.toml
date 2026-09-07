@@ -6,7 +6,7 @@ repository = "https://github.com/deepgram-starters/fastapi-live-text-to-speech"
 useCase = "live-text-to-speech"
 language = "python"
 framework = "fastapi"
-sdk = "N/A"
+sdk = "deepgram-sdk"
 tags = ["live-text-to-speech", "live-tts", "streaming-tts", "real-time-tts", "streaming-text-to-speech", "python", "fastapi"]
 
 [install.pre]

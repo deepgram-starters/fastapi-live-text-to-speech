@@ -85,7 +85,7 @@ Frontend: `cd frontend && corepack pnpm install`
 ## Customization Guide
 
 ### Changing Default Parameters
-The WebSocket connection URL passes parameters to Deepgram. Modify these in the backend where the Deepgram URL is constructed:
+The WebSocket connection passes parameters to Deepgram through `deepgram.speak.v1.connect()` in `app.py`. Update its typed arguments for `model`, `encoding`, and `sample_rate`; update `request_options.additional_query_parameters` for `container`.
 
 | Parameter | Default | Options | Effect |
 |-----------|---------|---------|--------|
@@ -139,6 +139,7 @@ The frontend is a git submodule from `deepgram-starters/live-text-to-speech-html
 | `PORT` | No | `8081` | Backend server port |
 | `HOST` | No | `0.0.0.0` | Backend bind address |
 | `SESSION_SECRET` | No | — | JWT signing secret (production) |
+| `DEEPGRAM_BASE_URL` | No | Production Deepgram endpoint | Override the Deepgram endpoint, for example `wss://api.staging.deepgram.com` |
 
 ## Conventional Commits
 
