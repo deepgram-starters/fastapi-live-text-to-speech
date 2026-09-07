@@ -271,6 +271,15 @@ async def live_tts(websocket: WebSocket):
                 detail = (f"Deepgram error (HTTP {e.status_code})"
                           if isinstance(e, ApiError) else type(e).__name__)
                 print(f"Error forwarding to Deepgram: {detail}")
+                try:
+                    await websocket.send_text(json.dumps({
+                        "type": "Error",
+                        "description": detail,
+                        "code": "PROVIDER_ERROR"
+                    }))
+                    await websocket.close(code=1011)
+                except Exception:
+                    pass  # WebSocket already closed
             finally:
                 forward_task.cancel()
                 try:

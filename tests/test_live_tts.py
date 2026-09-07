@@ -186,6 +186,38 @@ class LiveTtsTests(unittest.TestCase):
         )
         self.assertNotIn("stream-error-secret", str(error))
 
+    def test_reports_and_closes_on_provider_send_error(self):
+        class FailingSendConnection(FakeConnection):
+            async def send_text(self, message):
+                raise ApiError(
+                    status_code=503,
+                    headers={"Authorization": "Token send-error-secret"},
+                    body="unavailable",
+                )
+
+        @asynccontextmanager
+        async def connect(**kwargs):
+            yield FailingSendConnection()
+
+        app.deepgram.speak.v1.connect = connect
+
+        with self.connect() as websocket:
+            websocket.send_text('{"type":"Speak","text":"hello"}')
+            error = json.loads(websocket.receive_text())
+            close_message = websocket.receive()
+
+        self.assertEqual(
+            error,
+            {
+                "type": "Error",
+                "description": "Deepgram error (HTTP 503)",
+                "code": "PROVIDER_ERROR",
+            },
+        )
+        self.assertNotIn("send-error-secret", str(error))
+        self.assertEqual(close_message["type"], "websocket.close")
+        self.assertEqual(close_message["code"], 1011)
+
     def test_sdk_serializes_typed_and_raw_query_parameters(self):
         captured_url = None
         original_websocket_connect = speak_v1_client.websockets_client_connect
